@@ -1,6 +1,6 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: 2025 The Linux Foundation
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
 
 # Action test/validation workflow
 name: "Test GitHub Action 🧪"
@@ -20,13 +20,13 @@ concurrency:
 permissions: {}
 
 jobs:
-  ### Test the GitHub Action in this Repository ###
-  tests:
-    name: "Test local GitHub Action"
+  ### Offline tests, including the differential against the lane ###
+  unit:
+    name: "Unit and equivalence tests"
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    timeout-minutes: 10 # Increase this timeout value as needed
+    timeout-minutes: 15
     steps:
       # Load the egress allow-list out-of-band from the
       # organisation's .github repository and publish it as
@@ -34,9 +34,8 @@ jobs:
       # yamllint disable-line rule:line-length
       - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
         with:
-          config: '@18d9c4446bea555d0783e850f6d295f844fe8f67'  # v0.1.1
+          config: '@e0e35011ee145321a51d3226f044ec88dfe645b1'  # v0.16.4
 
-      # Harden the runner with the just-loaded allow-list.
       - name: 'Harden runner (block)'
         # yamllint disable-line rule:line-length
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
@@ -46,45 +45,205 @@ jobs:
             ${{ env.CONNECTION_ALLOW_LIST }}
 
       - name: "Checkout repository"
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
-      # Perform setup prior to running test(s)
-      - name: "Testing setup step"
+      - name: "Run tests"
         shell: bash
         run: |
-          # Testing setup step
-          echo "Testing setup step"
-          echo "Testing setup step/summary output" >> "$GITHUB_STEP_SUMMARY"
+          # Run tests
+          # The vendored lane body runs with the runner's own yq and jq,
+          # so a skipped differential suite must not pass for a run.
+          set -euo pipefail
+          yq --version
+          jq --version
+          python3 -m unittest discover -s tests -t . -v
 
-      - name: "Running local action: ${{ github.repository }}"
+  ### Real actions/checkout histories of this repository ###
+  checkout:
+    name: "actions/checkout depths"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
+        with:
+          config: '@e0e35011ee145321a51d3226f044ec88dfe645b1'  # v0.16.4
+
+      - name: 'Harden runner (block)'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        with:
+          egress-policy: 'block'
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      # As the merge lane checks out: the commit and its parents.
+      - name: "Checkout repository (fetch-depth: 2)"
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      # The default depth, which loses the parent.
+      - name: "Checkout repository (fetch-depth: 1)"
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          path: shallow
+          persist-credentials: false
+
+      - name: "Detect at depth 2"
+        id: deep
+        uses: $/
+
+      - name: "Detect at depth 1"
+        id: shallow
+        continue-on-error: true
         uses: $/
         with:
-          input: "test input 💬"
+          path: shallow
 
-      - name: "Validated local action: ${{ github.repository }}"
+      - name: "Validate"
         shell: bash
         env:
-          REPO: ${{ github.repository }}
+          HAS_RELEASE: ${{ steps.deep.outputs.has_release }}
+          COUNT: ${{ steps.deep.outputs.container_count }}
+          SHALLOW: ${{ steps.shallow.outcome }}
         run: |
-          # Local action validation
-          echo "Validated local action: $REPO"
-          echo "Validation step summary output" >> "$GITHUB_STEP_SUMMARY"
+          # Validate
+          # This repository carries no releases/, so depth 2 finds no
+          # release; depth 1 cannot tell, and must fail rather than
+          # report none.
+          set -euo pipefail
+          [ "${HAS_RELEASE}" = false ] && [ "${COUNT}" = 0 ]
+          [ "${SHALLOW}" = failure ]
+          echo "Checkout depths validated ✅"
 
+  ### Scripted histories: a release merge and a verify run ###
+  fixture:
+    name: "Release and verify fixtures"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
       # yamllint disable-line rule:line-length
-      - name: "Running local action: ${{ github.repository }} [Override Failure]"
-        uses: $/
-        id: failure
-        continue-on-error: true
+      - uses: lfreleng-actions/harden-runner-block-action@a32eb064a1188f6b0f15d2c0c0381efe54b0dd22  # v0.12.2
         with:
-          invalid_input: "Some garbage"
+          config: '@e0e35011ee145321a51d3226f044ec88dfe645b1'  # v0.16.4
 
-      # Failure testing is also important
-      - name: "Error if step above did NOT fail"
-        if: steps.failure.outcome == 'success'
+      - name: 'Harden runner (block)'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        with:
+          egress-policy: 'block'
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Checkout repository"
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: "Create fixture histories"
         shell: bash
         run: |
-          # Error if step above did NOT fail
-          echo "Error: previous test step did NOT fail ❌"
-          exit 1
+          # Create fixture histories
+          # fixture: main merges a release branch with --no-ff, as a
+          # pull request merge does. verify: a two-commit change whose
+          # first commit adds an invalid release file.
+          set -euo pipefail
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.invalid"
+          git config --global commit.gpgsign false
+          git init -q -b main fixture
+          git -C fixture commit -q --allow-empty -m "Initial commit"
+          git -C fixture checkout -q -b release
+          mkdir fixture/releases
+          cat > fixture/releases/1.2.3-container.yaml <<'EOF'
+          distribution_type: container
+          project: example
+          container_release_tag: 1.2.3
+          ref: 0123456789abcdef0123456789abcdef01234567
+          container_push_registry: nexus3.example.org:10003/onap
+          containers:
+            - name: policy-api
+              version: 1.2.3-STAGING-20260101T000000Z
+            - name: onap/policy-pap
+              version: 4.0
+          EOF
+          cat > fixture/releases/1.2.3-maven.yaml <<'EOF'
+          distribution_type: maven
+          version: 1.2.3
+          EOF
+          git -C fixture add -A
+          git -C fixture commit -q -m "Release 1.2.3"
+          git -C fixture checkout -q main
+          git -C fixture merge -q --no-ff --no-edit release
+          git clone -q fixture verify
+          git -C verify checkout -q -b change
+          printf 'distribution_type: container\ncontainers: []\n' \
+            > verify/releases/1.2.4-container.yaml
+          git -C verify add -A
+          git -C verify commit -q -m "Release 1.2.4"
+          git -C verify commit -q --allow-empty -m "Unrelated change"
+
+      - name: "Detect the release merge"
+        id: merge
+        uses: $/
+        with:
+          path: fixture
+          snapshot_registry: 'nexus3.example.org:10001'
+          release_registry: 'nexus3.example.org:10002'
+
+      - name: "Verify the change's last commit"
+        id: head
+        uses: $/
+        with:
+          path: verify
+
+      - name: "Verify the whole change"
+        id: change
+        continue-on-error: true
+        uses: $/
+        with:
+          path: verify
+          base: main
+
+      - name: "Validate"
+        shell: bash
+        env:
+          HAS_RELEASE: ${{ steps.merge.outputs.has_release }}
+          VERSION: ${{ steps.merge.outputs.version }}
+          CONTAINERS: ${{ steps.merge.outputs.containers_json }}
+          PULL: ${{ steps.merge.outputs.pull_registry }}
+          PUSH: ${{ steps.merge.outputs.push_registry }}
+          RELEASE_FILE: ${{ steps.merge.outputs.release_file }}
+          COUNT: ${{ steps.merge.outputs.container_count }}
+          TYPE: ${{ steps.merge.outputs.distribution_type }}
+          HEAD_RELEASE: ${{ steps.head.outputs.has_release }}
+          CHANGE: ${{ steps.change.outcome }}
+        run: |
+          # Validate
+          set -euo pipefail
+          [ "${HAS_RELEASE}" = true ] && [ "${VERSION}" = 1.2.3 ]
+          # Compact, and the number 4.0 kept as written.
+          [[ "${CONTAINERS}" != *" "* ]]
+          jq -e '. == [
+            {name: "policy-api", version: "1.2.3-STAGING-20260101T000000Z"},
+            {name: "onap/policy-pap", version: "4.0"}]' <<< "${CONTAINERS}"
+          [ -z "${PULL}" ] && [ "${PUSH}" = nexus3.example.org:10003/onap ]
+          [ "${RELEASE_FILE}" = releases/1.2.3-container.yaml ]
+          [ "${COUNT}" = 2 ] && [ "${TYPE}" = container ]
+          # The change's last commit touches no release file; with a
+          # base, the invalid file its first commit adds fails the run.
+          [ "${HEAD_RELEASE}" = false ]
+          [ "${CHANGE}" = failure ]
+          echo "Fixtures validated ✅"

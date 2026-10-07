@@ -1,53 +1,117 @@
 ---
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: 2025 The Linux Foundation
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
 
-# actions-template
-name: "🛠️ Actions Template"
-description: "Description of action"
-# Any relevant notes/observations can go here
+# docker-release-detect-action
+#
+# Detects the container release file a merged commit adds or edits
+# under releases/, validates it, and publishes the release tag, the
+# containers to promote and any registry overrides
+# (docker-workflows#36).
+#
+# The defaults reproduce the merge lane's check-release step, whose
+# five outputs keep their names here, so the lane can swap the step for
+# this action one for one. tests/test_equivalence.py proves that
+# against the original step body.
+name: "🐳 Docker Release Detect"
+description: >
+  Detect and validate the container release file a commit adds or edits
+  under releases/, and output its release tag, containers and registry
+  overrides.
 
 inputs:
-  input:
-    description: "Description of input"
-    required: true
+  snapshot_registry:
+    description: >
+      The registry images are promoted from. A container_pull_registry
+      override in the release file must name the same host; it may
+      change only the port or repository path. Empty allows no override.
+    required: false
+    default: ""
+  release_registry:
+    description: >
+      The registry images are promoted to. A container_push_registry
+      override must name the same host, as for snapshot_registry.
+    required: false
+    default: ""
+  base:
+    description: >
+      Empty compares the checked-out commit with its first parent, as
+      the merge lane meant to; a pull request's merge commit or a Gerrit
+      patch set works the same way. Set it to a branch or commit to
+      compare HEAD with its merge base with that revision instead, so
+      a verify run sees every commit of a multi-commit change.
+    required: false
+    default: ""
+  path:
+    description: >
+      The repository's top level, relative to the workspace: the
+      directory holding releases/.
+    required: false
+    default: "."
+  summary:
+    description: "Write a detection report to the step summary"
+    required: false
+    default: "true"
+  numeric_versions:
+    description: >
+      How to read a container_release_tag or containers[].version
+      that YAML types as a number (unquoted, or tagged !!int or
+      !!float): literal (the text as written), yaml (the number as
+      Jenkins renders it: 1.10 becomes 1.1) or refuse (fail, asking
+      for quotes). Quoted strings are always used as written.
+    required: false
+    default: "literal"
 
 outputs:
-  output:
-    description: "Description of output"
-    value: ${{ steps.code.outputs.output }}
+  has_release:
+    description: "'true' when the commit adds or edits a container release file"
+    value: ${{ steps.detect.outputs.has_release }}
+  version:
+    description: "The release file's container_release_tag"
+    value: ${{ steps.detect.outputs.version }}
+  containers_json:
+    description: >
+      Compact JSON list of {name, version}, versions as strings, the
+      staged images to promote
+    value: ${{ steps.detect.outputs.containers_json }}
+  pull_registry:
+    description: "The container_pull_registry override, or empty"
+    value: ${{ steps.detect.outputs.pull_registry }}
+  push_registry:
+    description: "The container_push_registry override, or empty"
+    value: ${{ steps.detect.outputs.push_registry }}
+  release_file:
+    description: "Path of the container release file, or empty"
+    value: ${{ steps.detect.outputs.release_file }}
+  container_count:
+    description: "Number of containers to promote; 0 without a release"
+    value: ${{ steps.detect.outputs.container_count }}
+  distribution_type:
+    description: "'container' with a release, otherwise empty"
+    value: ${{ steps.detect.outputs.distribution_type }}
 
 runs:
   using: "composite"
   steps:
-    - name: "Friendly Name"
-      id: code
+    - name: "Detect container release file"
+      id: detect
       shell: bash
       env:
-        INPUT_VALUE: ${{ inputs.input }}
+        INPUT_SNAPSHOT_REGISTRY: ${{ inputs.snapshot_registry }}
+        INPUT_RELEASE_REGISTRY: ${{ inputs.release_registry }}
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
+        INPUT_NUMERIC_VERSIONS: ${{ inputs.numeric_versions }}
       run: |
-        # Friendly Name
-        input="$INPUT_VALUE"
-        if [ -z "$input" ]; then
-          echo "Error: mandatory input was not set/configured ❌"
+        # Detect container release file
+        # Standard library only, so no setup-python step: GitHub-hosted
+        # runners ship a suitable python3, and the mikefarah yq that
+        # reads release files. -I (isolated mode) keeps the checked-out
+        # repository off sys.path; see entrypoint.py.
+        if ! python3 -I -c 'import sys; sys.exit(sys.version_info < (3, 10))' \
+          > /dev/null 2>&1; then
+          echo "::error::python3 3.10 or later is required on the runner"
           exit 1
         fi
-
-        # Write the output using the multiline heredoc format with a random
-        # delimiter so that an input containing newlines cannot inject
-        # additional keys into $GITHUB_OUTPUT (output-file injection). The
-        # delimiter is built from shell-builtin randomness (no external
-        # tools such as openssl/uuidgen, which are not guaranteed on
-        # self-hosted runners) and regenerated until it is provably absent
-        # from the value being emitted.
-        delimiter="ghadelim_${RANDOM}${RANDOM}${RANDOM}${RANDOM}"
-        while [[ "$input" == *"$delimiter"* ]]; do
-          delimiter="ghadelim_${RANDOM}${RANDOM}${RANDOM}${RANDOM}"
-        done
-        {
-          printf '%s<<%s\n' 'output' "$delimiter"
-          printf '%s\n' "$input"
-          printf '%s\n' "$delimiter"
-        } >> "$GITHUB_OUTPUT"
-        echo "Action received: $input ✅"
-        echo "Action received: $input ✅" >> "$GITHUB_STEP_SUMMARY"
+        python3 -I "${GITHUB_ACTION_PATH}/entrypoint.py"
