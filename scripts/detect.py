@@ -4,9 +4,10 @@
 """Detect a container release file in a commit and publish its contents.
 
 The flow is the merge lane's check-release step: list the files under
-releases/ that the commit touched, keep those still present, sort them
-by distribution_type, and accept exactly one container release file,
-whose tag, containers and registry overrides are then validated.
+releases/ and .releases/ that the commit touched, keep those still
+present, sort them by distribution_type, and accept exactly one
+container release file across both directories, whose tag, containers
+and registry overrides are then validated.
 """
 
 from __future__ import annotations
@@ -117,7 +118,8 @@ def _classify(changes: Changes, result: Result) -> list[str]:
     for path in changes.files:
         # Removed by the commit: not a release trigger. Decided from
         # HEAD's tree, not the checkout, where a symlink replacing
-        # releases/ could make a removed path resolve to another file.
+        # a release directory could make a removed path resolve to
+        # another file.
         if not in_commit(changes.head, path):
             continue
         # A symlink, at the file or any directory above it, could point
@@ -135,10 +137,11 @@ def _classify(changes: Changes, result: Result) -> list[str]:
             # In the commit but not on disk: a sparse checkout left it
             # out, and skipping it would miss the release.
             if not os.path.lexists(path):
+                directory = path.split("/", 1)[0]
                 raise ActionError(
                     f"{path} is in commit {changes.head[:12]} but absent from "
                     "the checkout, as with a sparse checkout; include "
-                    "releases/ (git sparse-checkout add releases)"
+                    f"{directory}/ (git sparse-checkout add {directory})"
                 )
             continue
         documents = yq.document_count(path)

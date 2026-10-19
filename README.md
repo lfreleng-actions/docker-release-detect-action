@@ -11,9 +11,9 @@
 <!-- prettier-ignore-end -->
 
 Decides whether a commit releases containers. It looks for the
-container release file the commit adds or edits under `releases/`,
-validates it, and outputs the release tag, the staged images to
-promote, and any registry overrides.
+container release file the commit adds or edits under `releases/` or
+`.releases/`, validates it, and outputs the release tag, the staged
+images to promote, and any registry overrides.
 
 ## docker-release-detect-action
 
@@ -125,7 +125,7 @@ the action then compares `HEAD` with its merge base with that revision.
 | `snapshot_registry` | False    | `''`      | Registry to promote from; a `container_pull_registry` override must keep its host     |
 | `release_registry`  | False    | `''`      | Registry to promote to; a `container_push_registry` override must keep its host       |
 | `base`              | False    | `''`      | Compare `HEAD` with its merge base with this revision, not with its first parent      |
-| `path`              | False    | `.`       | The repository's top level, holding `releases/`                                       |
+| `path`              | False    | `.`       | The repository's top level, holding `releases/` and `.releases/`                      |
 | `summary`           | False    | `true`    | Write a detection report to the step summary                                          |
 | `numeric_versions`  | False    | `literal` | Reading of unquoted number versions and tags: `literal`, `yaml` or `refuse` (below)   |
 
@@ -159,10 +159,12 @@ Any validation failure fails the step and publishes no outputs.
 
 ### What the commit changed
 
-The action lists the files under `releases/`, at any depth, that the
-commit touched: `git diff-tree -r -z` between HEAD's first parent,
-read from HEAD's commit object, and `HEAD`; see
-[`scripts/changes.py`](scripts/changes.py).
+The action lists the files under `releases/` and `.releases/`, at any
+depth, that the commit touched: `git diff-tree -r -z` between HEAD's
+first parent, read from HEAD's commit object, and `HEAD`; see
+[`scripts/changes.py`](scripts/changes.py). global-jjb's release job
+reads both directories, and projects such as O-RAN-SC keep release
+files in each; the lane read `releases/` alone.
 
 A merge commit compares with the branch it merged into, so
 a pull request merge counts the files the pull request brought. The
@@ -215,11 +217,12 @@ release whatever release file its history last held.
 
 ### Release file rules
 
-The action reads every file under `releases/` that the commit adds or
-changes, and keeps those whose `distribution_type` is `container`;
-others, such as `maven`, belong to other pipelines and draw a notice.
-No container release file means no release. More than one fails the
-step, since the promotion would otherwise pick one arbitrarily.
+The action reads every file under `releases/` and `.releases/` that
+the commit adds or changes, and keeps those whose `distribution_type`
+is `container`; others, such as `maven`, belong to other pipelines and
+draw a notice. No container release file means no release. More than
+one, counted across both directories, fails the step, since the
+promotion would otherwise pick one arbitrarily.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -374,6 +377,8 @@ release, released something unusable, or failed without saying why.
 | Name Docker refuses, such as `a..b`        | Outputs it                              | Fails                          |
 | Repository path over 255 characters        | Outputs it                              | Fails                          |
 | Merge into a branch holding a release file | Detects that file again                 | Detects merged-in files alone  |
+| Release file under `.releases/`            | Skips the release                       | Detects it                     |
+| One release file in each directory         | Detects the `releases/` file            | Fails                          |
 | Sparse checkout without `releases/`        | Takes the file for a deletion           | Fails, naming the fix          |
 | Name or version ending in a newline        | Outputs it                              | Fails                          |
 | Symlinked release file                     | Follows it                              | Fails                          |

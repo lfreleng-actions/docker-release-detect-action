@@ -5,8 +5,8 @@
 # docker-release-detect-action
 #
 # Detects the container release file a merged commit adds or edits
-# under releases/, validates it, and publishes the release tag, the
-# containers to promote and any registry overrides
+# under releases/ or .releases/, validates it, and publishes the
+# release tag, the containers to promote and any registry overrides
 # (docker-workflows#36).
 #
 # The defaults reproduce the merge lane's check-release step, whose
@@ -16,8 +16,8 @@
 name: "🐳 Docker Release Detect"
 description: >
   Detect and validate the container release file a commit adds or edits
-  under releases/, and output its release tag, containers and registry
-  overrides.
+  under releases/ or .releases/, and output its release tag, containers
+  and registry overrides.
 
 inputs:
   snapshot_registry:
@@ -45,7 +45,7 @@ inputs:
   path:
     description: >
       The repository's top level, relative to the workspace: the
-      directory holding releases/.
+      directory holding releases/ and .releases/.
     required: false
     default: "."
   summary:

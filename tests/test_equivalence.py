@@ -511,7 +511,6 @@ class DeliberateDifferenceTest(SandboxTestCase):
         self.assertEqual(lane.outputs["has_release"], "false")
         self.assertIn("but absent from the checkout", action.annotations[0])
 
-    @unittest.expectedFailure
     def test_dot_releases_file_is_detected(self) -> None:
         # global-jjb's release job reads releases/ and .releases/; the
         # lane read releases/ alone and skipped the release.
@@ -522,7 +521,6 @@ class DeliberateDifferenceTest(SandboxTestCase):
         self.assertEqual(action.outputs["has_release"], "true")
         self.assertEqual(action.outputs["release_file"], ".releases/x-container.yaml")
 
-    @unittest.expectedFailure
     def test_dot_releases_other_type_is_ignored(self) -> None:
         repo = self.release_commit({".releases/x-maven.yaml": MAVEN})
         action = run_action(repo)
@@ -536,7 +534,6 @@ class DeliberateDifferenceTest(SandboxTestCase):
             ],
         )
 
-    @unittest.expectedFailure
     def test_one_file_in_each_directory_is_refused(self) -> None:
         # One container release file per commit holds across both
         # directories, as it does in Jenkins.
@@ -553,7 +550,6 @@ class DeliberateDifferenceTest(SandboxTestCase):
             action.annotations[0],
         )
 
-    @unittest.expectedFailure
     def test_sparse_checkout_without_dot_releases_fails(self) -> None:
         repo = self.release_commit({".releases/x-container.yaml": VALID})
         repo.git("sparse-checkout", "set", "src")
