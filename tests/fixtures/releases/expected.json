@@ -8,6 +8,7 @@
   "fixtures": [
     {
       "file": "onap-dmaap-datarouter.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -20,6 +21,7 @@
     },
     {
       "file": "onap-pnf-simulator.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -32,6 +34,7 @@
     },
     {
       "file": "onap-java11.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -44,6 +47,7 @@
     },
     {
       "file": "onap-cps-dmi-plugin.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -56,6 +60,7 @@
     },
     {
       "file": "onap-policy-docker.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -74,6 +79,7 @@
     },
     {
       "file": "oran-nonrtric-capif.yaml",
+      "directory": ".releases",
       "schema": "accept",
       "action": [
         {
@@ -86,6 +92,7 @@
     },
     {
       "file": "oran-ric-app-ml.yaml",
+      "directory": ".releases",
       "schema": "accept",
       "action": [
         {
@@ -98,6 +105,7 @@
     },
     {
       "file": "oran-it-test-empty-ref.yaml",
+      "directory": "releases",
       "schema": "reject",
       "action": [
         {
@@ -110,6 +118,7 @@
     },
     {
       "file": "missing-project.yaml",
+      "directory": "releases",
       "schema": "reject",
       "action": [
         {
@@ -122,6 +131,7 @@
     },
     {
       "file": "missing-ref.yaml",
+      "directory": "releases",
       "schema": "reject",
       "action": [
         {
@@ -134,6 +144,7 @@
     },
     {
       "file": "unquoted-number-tag.yaml",
+      "directory": "releases",
       "schema": "reject",
       "action": [
         {
@@ -146,6 +157,7 @@
     },
     {
       "file": "container-bad-name.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -159,6 +171,7 @@
     },
     {
       "file": "container-extra-key.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -171,6 +184,7 @@
     },
     {
       "file": "container-bare-number.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -184,6 +198,7 @@
     },
     {
       "file": "registry-other-host.yaml",
+      "directory": "releases",
       "schema": "accept",
       "action": [
         {
@@ -197,6 +212,7 @@
     },
     {
       "file": "tag-release-string.yaml",
+      "directory": "releases",
       "schema": "reject",
       "action": [
         {
@@ -209,6 +225,7 @@
     },
     {
       "file": "missing-release-tag.yaml",
+      "directory": "releases",
       "schema": "reject",
       "action": [
         {
