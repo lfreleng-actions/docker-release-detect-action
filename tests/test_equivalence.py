@@ -511,6 +511,56 @@ class DeliberateDifferenceTest(SandboxTestCase):
         self.assertEqual(lane.outputs["has_release"], "false")
         self.assertIn("but absent from the checkout", action.annotations[0])
 
+    def test_dot_releases_file_is_detected(self) -> None:
+        # global-jjb's release job reads releases/ and .releases/; the
+        # lane read releases/ alone and skipped the release.
+        repo = self.release_commit({".releases/x-container.yaml": VALID})
+        lane, action = run_legacy(repo), run_action(repo)
+        self.assertEqual((lane.status, action.status), (0, 0), action.stdout)
+        self.assertEqual(lane.outputs["has_release"], "false")
+        self.assertEqual(action.outputs["has_release"], "true")
+        self.assertEqual(action.outputs["release_file"], ".releases/x-container.yaml")
+
+    def test_dot_releases_other_type_is_ignored(self) -> None:
+        repo = self.release_commit({".releases/x-maven.yaml": MAVEN})
+        action = run_action(repo)
+        self.assertEqual(action.status, 0, action.stdout)
+        self.assertEqual(action.outputs["has_release"], "false")
+        self.assertEqual(
+            action.annotations,
+            [
+                "::notice::Ignoring non-container release file: "
+                ".releases/x-maven.yaml (distribution_type: maven)"
+            ],
+        )
+
+    def test_one_file_in_each_directory_is_refused(self) -> None:
+        # One container release file per commit holds across both
+        # directories, as it does in Jenkins.
+        repo = self.release_commit(
+            {"releases/a-container.yaml": VALID, ".releases/b-container.yaml": VALID}
+        )
+        lane, action = run_legacy(repo), run_action(repo)
+        self.assertEqual(lane.status, 0)
+        self.assertEqual(lane.outputs["has_release"], "true")
+        self.assertEqual(action.status, 1)
+        self.assertIn(
+            "Multiple container release files in merged commit: "
+            ".releases/b-container.yaml, releases/a-container.yaml",
+            action.annotations[0],
+        )
+
+    def test_sparse_checkout_without_dot_releases_fails(self) -> None:
+        repo = self.release_commit({".releases/x-container.yaml": VALID})
+        repo.git("sparse-checkout", "set", "src")
+        self.assertFalse((repo.path / ".releases").exists())
+        action = run_action(repo)
+        self.assertEqual(action.status, 1)
+        self.assertIn(
+            "include .releases/ (git sparse-checkout add .releases)",
+            action.annotations[0],
+        )
+
     def test_overlong_repository_path_is_refused(self) -> None:
         # Every component is valid, but a registry refuses a repository
         # path over 255 characters, so the promotion would fail.

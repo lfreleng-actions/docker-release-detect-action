@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 The Linux Foundation
 
-"""The files under releases/ that a commit, or a change, touched.
+"""The release files that a commit, or a change, touched.
 
 Without a base this is the merge lane's question: what did the checked
 out commit change against its first parent? With a base it is a verify
@@ -19,6 +19,9 @@ import subprocess
 from dataclasses import dataclass
 
 from scripts.gha import ActionError
+
+# The directories global-jjb's release job reads release files from.
+RELEASE_DIRS = ("releases", ".releases")
 
 # The lane's message for a failed diff-tree, kept as the prefix of ours.
 DIFF_TREE_FAILED = (
@@ -59,7 +62,8 @@ def _require_top_level() -> None:
     if prefix:
         raise ActionError(
             f"path must be the top level of the repository, where "
-            f"releases/ lives; it points at the subdirectory '{prefix}'"
+            f"releases/ and .releases/ live; it points at the subdirectory "
+            f"'{prefix}'"
         )
 
 
@@ -114,7 +118,7 @@ def _diff_tree(*revisions: str) -> list[str]:
         "--name-only",
         *revisions,
         "--",
-        "releases/",
+        *(f"{directory}/" for directory in RELEASE_DIRS),
     )
     if proc.returncode != 0:
         raise ActionError(f"{DIFF_TREE_FAILED}: {_stderr(proc)}")
@@ -146,7 +150,7 @@ def _merge_base(base: str, head: str) -> str:
 
 
 def find_changes(base: str) -> Changes:
-    """List the files under releases/ that HEAD changes.
+    """List the files under releases/ and .releases/ that HEAD changes.
 
     Runs in the repository's top level. Without ``base``, HEAD is
     compared with its first parent, as the merge lane meant to. With one,
