@@ -247,3 +247,127 @@ jobs:
           [ "${HEAD_RELEASE}" = false ]
           [ "${CHANGE}" = failure ]
           echo "Fixtures validated ✅"
+
+  ### Schema verdicts on the fixture corpus, with the real validator ###
+  schema-fixtures:
+    name: "List schema fixtures"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      fixtures: ${{ steps.list.outputs.fixtures }}
+      control: ${{ steps.list.outputs.control }}
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: lfreleng-actions/harden-runner-block-action@51ef68401547a8b648275129b9a21544612596d5  # v0.13.1
+        with:
+          config: '@e0e35011ee145321a51d3226f044ec88dfe645b1'  # v0.16.4
+
+      - name: 'Harden runner (block)'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25  # v2.22.1
+        with:
+          egress-policy: 'block'
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Checkout repository"
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: "List fixtures"
+        id: list
+        shell: bash
+        run: |
+          # List fixtures
+          # Each fixture's schema verdict, and one the schema accepts,
+          # which every schema job validates first as a control.
+          set -euo pipefail
+          expected=tests/fixtures/releases/expected.json
+          fixtures="$(jq -c '[.fixtures[] | {file, schema}]' "${expected}")"
+          control="$(jq -r 'first(.fixtures[] | select(.schema == "accept")
+            | .file)' "${expected}")"
+          [ -n "${control}" ]
+          echo "fixtures=${fixtures}" >> "${GITHUB_OUTPUT}"
+          echo "control=${control}" >> "${GITHUB_OUTPUT}"
+
+  schema:
+    name: "Schema verdict: ${{ matrix.fixture.file }}"
+    needs: schema-fixtures
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: ${{ fromJSON(needs.schema-fixtures.outputs.fixtures) }}
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: lfreleng-actions/harden-runner-block-action@51ef68401547a8b648275129b9a21544612596d5  # v0.13.1
+        with:
+          config: '@e0e35011ee145321a51d3226f044ec88dfe645b1'  # v0.16.4
+
+      - name: 'Harden runner (block)'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25  # v2.22.1
+        with:
+          egress-policy: 'block'
+          allowed-endpoints: >
+            ${{ env.CONNECTION_ALLOW_LIST }}
+
+      - name: "Checkout repository"
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A file the schema accepts must pass first. The validator fails
+      # alike on a schema error and on a failed uv or lftools-uv
+      # install, so without this a broken toolchain would read as the
+      # expected rejection.
+      - name: "Validate the control fixture"
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/verify-release-schema-action@d8166617b2566adb151a9594849440ebfb9a9183  # v1.1.0
+        with:
+          distribution-type: container
+          # yamllint disable-line rule:line-length
+          release-file: "tests/fixtures/releases/${{ needs.schema-fixtures.outputs.control }}"
+          lftools-uv-version: '0.5.7'
+
+      - name: "Validate the fixture"
+        id: verify
+        continue-on-error: true
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/verify-release-schema-action@d8166617b2566adb151a9594849440ebfb9a9183  # v1.1.0
+        with:
+          distribution-type: container
+          release-file: "tests/fixtures/releases/${{ matrix.fixture.file }}"
+          lftools-uv-version: '0.5.7'
+
+      - name: "Compare with expected.json"
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture.file }}
+          EXPECTED: ${{ matrix.fixture.schema }}
+          OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          # Compare with expected.json
+          set -euo pipefail
+          case "${OUTCOME}" in
+            success) actual=accept ;;
+            failure) actual=reject ;;
+            *)
+              echo "::error::Validating ${FIXTURE} ended ${OUTCOME}"
+              exit 1
+              ;;
+          esac
+          if [ "${actual}" != "${EXPECTED}" ]; then
+            echo "::error::The schema would ${actual} ${FIXTURE};" \
+              "tests/fixtures/releases/expected.json says ${EXPECTED}"
+            exit 1
+          fi
+          echo "Schema verdict for ${FIXTURE}: ${actual} ✅"
