@@ -319,18 +319,65 @@ needs the `eval` subcommand. It fails with that reason rather than at
 the first release merge. Validation
 then runs in Python, so the action needs no jq.
 
+### The release container schema
+
+[verify-release-schema-action] holds the organisation's release
+schemas, and since v1.1.0 bundles them rather than fetching them. It
+validates a container release file with `lftools-uv schema verify`:
+PyYAML reads the file, and `jsonschema` checks it against
+`schemas/release-container-schema.yaml` under JSON Schema Draft 4.
+
+This action neither reads nor evaluates that schema. It runs on the
+runner's own Python standard library and yq, with no install step, so
+it works in a merge lane under an egress block; a copy of the schema's
+rules here would drift from the original. It keeps its own, stricter
+grammar for the fields the promotion consumes, and a labelled fixture
+corpus pins how the two relate.
+
+<!-- markdownlint-disable MD013 -->
+
+| Field                                                | Schema                                                                                             | This action                                                                                                |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Required keys                                        | `containers`, `distribution_type`, `project`, `container_release_tag`, `ref`                       | `distribution_type: container`, `container_release_tag`, `containers`                                      |
+| Types                                                | Scalars are strings, `tag_release` a boolean; PyYAML reads unquoted `1.10` as a float, which fails | `container_release_tag` and versions: a string or a number, read per `numeric_versions`                    |
+| Extra top-level keys                                 | Allowed                                                                                            | Ignored                                                                                                    |
+| `distribution_type`                                  | A string                                                                                           | `container` selects the file; any other value draws a notice and releases nothing                          |
+| `container_release_tag`                              | A string                                                                                           | Docker's tag grammar                                                                                       |
+| `containers`                                         | An array; Draft 4 checks none of its entries                                                       | A non-empty list of `{name, version}` mappings, names unique and in Docker's grammar, tag-grammar versions |
+| `containers` entry keys                              | Anything, including no mapping at all                                                              | `name` and `version` required; other keys dropped from the output                                          |
+| `container_pull_registry`, `container_push_registry` | Any string                                                                                         | `host[:port][/path]` on the host of the matching input                                                     |
+| `ref`                                                | A string; `ref:` with no value is null, and fails                                                  | Not read                                                                                                   |
+| `project`, `git_tag`                                 | A string                                                                                           | Not read                                                                                                   |
+| `tag_release`                                        | A boolean; the string `'true'` fails                                                               | Not read                                                                                                   |
+
+<!-- markdownlint-enable MD013 -->
+
+The schema's `containers` rules sit on the array itself:
+`properties` and `additionalProperties: false` apply to objects alone
+in Draft 4, so it accepts `Bad Name!`, an extra key or a bare `42` as
+an entry. Neither validator checks that `ref` is a full commit SHA.
+
+The two agree on real files almost everywhere. A survey on 2026-10-18
+ran every container release file in the ONAP and O-RAN-SC Gerrit
+trees through both, with each project's registries as the action's
+inputs. Of 1,415 ONAP files, 1,413 passed both; the schema alone
+accepted 2, `policy/docker` releases that override both registries to
+`docker.io`. Of 133 O-RAN-SC files, 132 passed both; the action alone
+accepted 1, whose `ref:` holds no value. The fixture
+[README](tests/fixtures/releases/README.md) lists each case with its
+verdicts and the real file it models. `tests/test_fixtures.py`
+asserts the action's verdicts, and the `schema` CI job runs
+verify-release-schema-action v1.1.0 with `lftools-uv` 0.5.7 on every
+fixture, so a schema change arrives as a failing Dependabot bump.
+
 ### Related actions and Jenkins
 
-- **[verify-release-schema-action]** validates a release file against
-  global-jjb's JSON Schema with `lftools`. This action mirrors the
-  fields the promotion consumes rather than calling it: it fetches
-  `lftools-uv` from PyPI and the schema from GitHub at run time, which
-  a merge lane under an egress block cannot do, and it reads YAML
-  through PyYAML. The two check different properties. The schema requires
-  `project` and `ref`, which the promotion never reads, and requires
-  strings where the lane accepts YAML numbers; it does not inspect
-  `containers` entries at all, where this action applies the name and
-  tag grammars. A verify lane after full Jenkins parity can run both.
+- **[verify-release-schema-action]** checks a release file against
+  the organisation's JSON Schema; see
+  [the release container schema](#the-release-container-schema) for
+  how its rules relate to this action's. It installs uv and
+  `lftools-uv` when it runs, so it needs PyPI access, where this action
+  installs nothing. A verify lane can run both.
 - **[build-metadata-action]** reports the release files present in the
   tree, so a workflow knows a repository is release-ready. This action
   answers a different question, which release file a given commit
@@ -420,8 +467,9 @@ python3 -m unittest discover -s tests -t .
 
 The suite needs `git` and `yq`; the differential tests also need
 `bash` and `jq`, 1.7 or later for the number cases. The CI workflow
-adds real `actions/checkout` histories at depths 1 and 2, and fixture
-repositories for a release merge and a verify run.
+adds real `actions/checkout` histories at depths 1 and 2, fixture
+repositories for a release merge and a verify run, and the schema's
+verdict on every file in `tests/fixtures/releases/`.
 
 [build-metadata-action]: https://github.com/lfreleng-actions/build-metadata-action
 [docker-promote-action]: https://github.com/lfreleng-actions/docker-promote-action
