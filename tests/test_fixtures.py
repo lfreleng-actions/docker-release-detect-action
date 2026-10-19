@@ -4,9 +4,10 @@
 """The labelled release file corpus: this action's verdict on each.
 
 tests/fixtures/releases/expected.json records, for every fixture, the
-container schema's verdict and this action's verdict with the registry
-inputs it runs with. This suite asserts the action's verdicts offline;
-the schema's are asserted in CI with the real validator.
+directory its release file sits in, the container schema's verdict and
+this action's verdict with the registry inputs it runs with. This
+suite commits each fixture in that directory and asserts the action's
+verdicts offline; the schema's are asserted in CI with the real validator.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from tests.support import ROOT, SandboxTestCase, run_action
 
 FIXTURES = ROOT / "tests" / "fixtures" / "releases"
 VERDICTS = {"accept", "reject"}
+DIRECTORIES = {"releases", ".releases"}
 
 
 def load_expected() -> list[dict[str, Any]]:
@@ -36,6 +38,11 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual(len(listed), len(set(listed)))
         on_disk = sorted(path.name for path in FIXTURES.glob("*.yaml"))
         self.assertEqual(sorted(listed), on_disk)
+
+    def test_every_fixture_names_a_release_directory(self) -> None:
+        for entry in load_expected():
+            with self.subTest(fixture=entry["file"]):
+                self.assertIn(entry["directory"], DIRECTORIES)
 
     def test_disagreements_carry_a_reason(self) -> None:
         for entry in load_expected():
@@ -64,10 +71,12 @@ class VerdictTest(SandboxTestCase):
         for entry in load_expected():
             content = (FIXTURES / entry["file"]).read_text(encoding="utf-8")
             repo = self.sandbox.repo(entry["file"].removesuffix(".yaml"))
-            repo.commit({f"releases/{entry['file']}": content})
+            release_file = f"{entry['directory']}/{entry['file']}"
+            repo.commit({release_file: content})
             for run_inputs in entry["action"]:
                 with self.subTest(
                     fixture=entry["file"],
+                    directory=entry["directory"],
                     snapshot_registry=run_inputs["snapshot_registry"],
                     release_registry=run_inputs["release_registry"],
                 ):
@@ -79,6 +88,7 @@ class VerdictTest(SandboxTestCase):
                     if run_inputs["verdict"] == "accept":
                         self.assertEqual(run.status, 0, run.stdout)
                         self.assertEqual(run.outputs["has_release"], "true")
+                        self.assertEqual(run.outputs["release_file"], release_file)
                     else:
                         # The error names the rule, so a fixture cannot
                         # pass by failing for an unrelated reason.

@@ -15,9 +15,10 @@ validators:
 - **Action**: this action, with the registry inputs shown.
 
 [`expected.json`](expected.json) holds the same verdicts in machine
-readable form. `tests/test_fixtures.py` asserts every action verdict
-offline, and the `schema` job in `.github/workflows/testing.yaml`
-asserts every schema verdict with the real validator.
+readable form, with the directory each fixture's release file sits
+in. `tests/test_fixtures.py` asserts every action verdict offline,
+and the `schema` job in `.github/workflows/testing.yaml` asserts
+every schema verdict with the real validator.
 
 Every fixture is original to this repository, under its licence. A
 fixture that models a real release file reproduces the features listed
@@ -102,8 +103,10 @@ none of it.
 The other fixtures model no single file. Each stands for one
 disagreement between the validators, or one case both reject.
 
-The two `.releases/` files sit where this action does not look today
-([#17]); their fixtures record how it judges the content alone.
+The two O-RAN-SC fixtures cited at a `.releases/` path model files
+kept in `.releases/`, and every other fixture sits in `releases/`.
+`expected.json` records each fixture's directory, and
+`tests/test_fixtures.py` commits the fixture there before running the
+action, so the corpus exercises both directories the action reads.
 
 [verify-release-schema-action]: https://github.com/lfreleng-actions/verify-release-schema-action
-[#17]: https://github.com/lfreleng-actions/docker-release-detect-action/issues/17
