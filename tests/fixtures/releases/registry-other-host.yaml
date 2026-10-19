@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+---
+distribution_type: container
+project: example
+container_release_tag: 1.2.3
+ref: 0123456789abcdef0123456789abcdef01234567
+container_pull_registry: registry.example.org
+container_push_registry: registry.example.org
+containers:
+  - name: example/app
+    version: 1.2.3

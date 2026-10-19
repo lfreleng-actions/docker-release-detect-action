@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+---
+distribution_type: container
+container_release_tag: 2.1.15
+project: example/datarouter
+log-dir: example-datarouter-maven-docker-stage-master/42/
+ref: a1b2c3d4e5f60718293a4b5c6d7e8f901234567
+containers:
+  - name: example/datarouter/prov
+    version: 2.1.15
+  - name: example/datarouter/node
+    version: 2.1.15

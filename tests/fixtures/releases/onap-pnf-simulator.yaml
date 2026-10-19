@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+---
+distribution_type: 'container'
+container_release_tag: '1.0.6'
+container_pull_registry: 'nexus3.onap.org:10003'
+container_push_registry: 'nexus3.onap.org:10003'
+project: 'example/simulators'
+ref: '0123456789abcdef0123456789abcdef01234567'
+containers:
+  - name: 'example/org.example.simulators.pnf-simulator'
+    version: '1.0.6-STAGING-latest'

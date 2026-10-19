@@ -1,0 +1,224 @@
+{
+  "validator": {
+    "action": "lfreleng-actions/verify-release-schema-action",
+    "commit": "d8166617b2566adb151a9594849440ebfb9a9183",
+    "schema": "schemas/release-container-schema.yaml",
+    "lftools_uv": "0.5.7"
+  },
+  "fixtures": [
+    {
+      "file": "onap-dmaap-datarouter.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.onap.org:10001",
+          "release_registry": "nexus3.onap.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "onap-pnf-simulator.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.onap.org:10001",
+          "release_registry": "nexus3.onap.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "onap-java11.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.onap.org:10001",
+          "release_registry": "nexus3.onap.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "onap-cps-dmi-plugin.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.onap.org:10001",
+          "release_registry": "nexus3.onap.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "onap-policy-docker.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.onap.org:10001",
+          "release_registry": "nexus3.onap.org:10002",
+          "verdict": "reject",
+          "error": "must stay on the configured registry host"
+        },
+        {
+          "snapshot_registry": "docker.io",
+          "release_registry": "docker.io",
+          "verdict": "accept"
+        }
+      ],
+      "reason": "The schema does not constrain registry overrides; the action keeps each on the host of the matching input, because the promotion logs in there with that registry's credential."
+    },
+    {
+      "file": "oran-nonrtric-capif.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.o-ran-sc.org:10004",
+          "release_registry": "nexus3.o-ran-sc.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "oran-ric-app-ml.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.o-ran-sc.org:10004",
+          "release_registry": "nexus3.o-ran-sc.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "oran-it-test-empty-ref.yaml",
+      "schema": "reject",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.o-ran-sc.org:10004",
+          "release_registry": "nexus3.o-ran-sc.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": "'ref:' with no value is null, which the schema's type: string refuses; the promotion never reads ref, so the action does not check it."
+    },
+    {
+      "file": "missing-project.yaml",
+      "schema": "reject",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": "The schema requires project; the promotion never reads it, so the action does not check it."
+    },
+    {
+      "file": "missing-ref.yaml",
+      "schema": "reject",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": "The schema requires ref; the promotion never reads it, so the action does not check it."
+    },
+    {
+      "file": "unquoted-number-tag.yaml",
+      "schema": "reject",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": "PyYAML reads an unquoted 1.10 as a float, which the schema's type: string refuses; the action reads a number as the numeric_versions input says, by default as written (1.10)."
+    },
+    {
+      "file": "container-bad-name.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "reject",
+          "error": "is not a repository path"
+        }
+      ],
+      "reason": "Under Draft 4 the schema's properties and additionalProperties on the containers array apply to no entry; the action applies Docker's repository name grammar."
+    },
+    {
+      "file": "container-extra-key.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": null
+    },
+    {
+      "file": "container-bare-number.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "reject",
+          "error": "entry 1 is a number"
+        }
+      ],
+      "reason": "Under Draft 4 the schema checks no containers entry, so a bare number passes; the action requires each entry to be a {name, version} mapping."
+    },
+    {
+      "file": "registry-other-host.yaml",
+      "schema": "accept",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "reject",
+          "error": "must stay on the configured registry host"
+        }
+      ],
+      "reason": "The schema does not constrain registry overrides; the action keeps each on the host of the matching input, because the promotion logs in there with that registry's credential."
+    },
+    {
+      "file": "tag-release-string.yaml",
+      "schema": "reject",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "accept"
+        }
+      ],
+      "reason": "The schema types tag_release as a boolean and refuses the string 'true'; the promotion never reads tag_release, so the action does not check it."
+    },
+    {
+      "file": "missing-release-tag.yaml",
+      "schema": "reject",
+      "action": [
+        {
+          "snapshot_registry": "nexus3.example.org:10001",
+          "release_registry": "nexus3.example.org:10002",
+          "verdict": "reject",
+          "error": "Invalid or missing container_release_tag"
+        }
+      ],
+      "reason": null
+    }
+  ]
+}

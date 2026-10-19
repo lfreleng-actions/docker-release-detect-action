@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+---
+distribution_type: 'container'
+container_release_tag: '12.0.0'
+project: 'example/docker/java11'
+log_dir: 'example-docker-java11-maven-docker-stage-master/7/'
+ref: '0123456789abcdef0123456789abcdef01234567'
+containers:
+    - name: 'example/java11'
+      version: 'latest'
