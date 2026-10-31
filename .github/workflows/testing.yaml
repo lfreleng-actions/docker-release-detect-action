@@ -331,7 +331,7 @@ jobs:
       # expected rejection.
       - name: "Validate the control fixture"
         # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/verify-release-schema-action@d8166617b2566adb151a9594849440ebfb9a9183  # v1.1.0
+        uses: lfreleng-actions/verify-release-schema-action@6defa50d0fd0f4c011b5ea0f625f0ba2b256dfb5  # v1.1.2
         with:
           distribution-type: container
           # yamllint disable-line rule:line-length
@@ -342,7 +342,7 @@ jobs:
         id: verify
         continue-on-error: true
         # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/verify-release-schema-action@d8166617b2566adb151a9594849440ebfb9a9183  # v1.1.0
+        uses: lfreleng-actions/verify-release-schema-action@6defa50d0fd0f4c011b5ea0f625f0ba2b256dfb5  # v1.1.2
         with:
           distribution-type: container
           release-file: "tests/fixtures/releases/${{ matrix.fixture.file }}"
