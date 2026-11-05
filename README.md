@@ -455,8 +455,12 @@ The job's `outputs:` block and its checkouts stay as they are.
 
 ## Notes
 
-- Needs `python3` 3.10 or later and mikefarah `yq` v4.25.3 or a later
+- Needs `python3` 3.11 or later and mikefarah `yq` v4.25.3 or a later
   v4 on the runner, as GitHub-hosted runners provide, and installs nothing.
+  Every current GitHub-hosted image meets this (`ubuntu-24.04` ships
+  3.12). The system `python3` on `ubuntu-22.04` is 3.10, so a job on
+  that image fails fast with an error unless it first installs a
+  newer Python, for example with `actions/setup-python`.
 - The action reads the checkout and never runs repository content.
   Python's isolated mode keeps the checked-out tree off the import
   path, so a repository cannot substitute its own modules for the
