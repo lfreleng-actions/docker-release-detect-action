@@ -8,8 +8,9 @@ description = "Detect and validate the container release file a commit adds or e
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-# Standard library only: the composite action runs on the runner's own
-# python3 with no install step. Release files are read with the
+# Standard library only: the composite action runs on the Python
+# actions/setup-python provides, with no package install step, and
+# keeps requires-python for local runs. Release files are read with the
 # runner's yq (mikefarah v4), not a Python YAML library.
 dependencies = []
 

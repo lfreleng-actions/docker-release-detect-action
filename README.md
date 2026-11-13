@@ -331,11 +331,12 @@ PyYAML reads the file, and `jsonschema` checks it against
 `schemas/release-container-schema.yaml` under JSON Schema Draft 4.
 
 This action neither reads nor evaluates that schema. It runs on the
-runner's own Python standard library and yq, with no install step, so
-it works in a merge lane under an egress block; a copy of the schema's
-rules here would drift from the original. It keeps its own, stricter
-grammar for the fields the promotion consumes, and a labelled fixture
-corpus pins how the two relate.
+Python standard library and the runner's yq, installing no packages.
+On a runner whose tool cache holds Python 3.12 it works in a merge
+lane under an egress block (see [Notes](#notes)); a copy of the
+schema's rules here would drift from the original. It keeps its own,
+stricter grammar for the fields the promotion consumes, and a
+labelled fixture corpus pins how the two relate.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -380,7 +381,7 @@ fixture, so a schema change arrives as a failing Dependabot bump.
   [the release container schema](#the-release-container-schema) for
   how its rules relate to this action's. It installs uv and
   `lftools-uv` when it runs, so it needs PyPI access, where this action
-  installs nothing. A verify lane can run both.
+  installs no packages. A verify lane can run both.
 - **[build-metadata-action]** reports the release files present in the
   tree, so a workflow knows a repository is release-ready. This action
   answers a different question, which release file a given commit
@@ -455,12 +456,19 @@ The job's `outputs:` block and its checkouts stay as they are.
 
 ## Notes
 
-- Needs `python3` 3.11 or later and mikefarah `yq` v4.25.3 or a later
-  v4 on the runner, as GitHub-hosted runners provide, and installs nothing.
-  Every current GitHub-hosted image meets this (`ubuntu-24.04` ships
-  3.12). The system `python3` on `ubuntu-22.04` is 3.10, so a job on
-  that image fails fast with an error unless it first installs a
-  newer Python, for example with `actions/setup-python`.
+- Runs on Python 3.12 from a commit-pinned `actions/setup-python`
+  step, started by the path that step outputs, so the caller's `PATH`
+  never chooses the interpreter. That step sets `update-environment:
+  false`, leaving the job's `PATH` and later steps' Python as they
+  were. Needs mikefarah `yq` v4.25.3 or a later v4 on the runner, as
+  GitHub-hosted runners provide.
+- `actions/setup-python` v7 runs on Node 24, so a self-hosted runner
+  needs a release of the runner that supports it. It takes Python
+  3.12 from the runner's tool cache, which GitHub-hosted images
+  preload, and otherwise downloads it from GitHub, so a self-hosted
+  runner without a cached 3.12 needs network access to GitHub's
+  release downloads, or a 3.12 added to its tool cache beforehand. A
+  suitable system `python3` alone no longer suffices.
 - The action reads the checkout and never runs repository content.
   Python's isolated mode keeps the checked-out tree off the import
   path, so a repository cannot substitute its own modules for the
