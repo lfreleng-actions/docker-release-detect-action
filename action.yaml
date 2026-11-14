@@ -93,10 +93,24 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # update-environment: false leaves the caller's PATH and
+    # pythonLocation as they were; the next step starts this
+    # interpreter by its path rather than whatever python3 the caller's
+    # PATH resolves. python-version is set so setup-python never reads
+    # a .python-version file from the caller's checkout.
+    - name: "Set up Python"
+      id: setup-python
+      # yamllint disable-line rule:line-length
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: "3.12"
+        update-environment: false
+
     - name: "Detect container release file"
       id: detect
       shell: bash
       env:
+        PYTHON: ${{ steps.setup-python.outputs.python-path }}
         INPUT_SNAPSHOT_REGISTRY: ${{ inputs.snapshot_registry }}
         INPUT_RELEASE_REGISTRY: ${{ inputs.release_registry }}
         INPUT_BASE: ${{ inputs.base }}
@@ -105,13 +119,8 @@ runs:
         INPUT_NUMERIC_VERSIONS: ${{ inputs.numeric_versions }}
       run: |
         # Detect container release file
-        # Standard library only, so no setup-python step: GitHub-hosted
-        # runners ship a suitable python3, and the mikefarah yq that
-        # reads release files. -I (isolated mode) keeps the checked-out
-        # repository off sys.path; see entrypoint.py.
-        if ! python3 -I -c 'import sys; sys.exit(sys.version_info < (3, 11))' \
-          > /dev/null 2>&1; then
-          echo "::error::python3 3.11 or later is required on the runner"
-          exit 1
-        fi
-        python3 -I "${GITHUB_ACTION_PATH}/entrypoint.py"
+        # Standard library only, so the interpreter needs no packages;
+        # the mikefarah yq that reads release files comes from the
+        # runner. -I (isolated mode) keeps the checked-out repository
+        # off sys.path; see entrypoint.py.
+        "$PYTHON" -I "${GITHUB_ACTION_PATH}/entrypoint.py"
