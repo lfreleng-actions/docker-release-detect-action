@@ -7,7 +7,7 @@
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line MD013 -->
-[![Linux Foundation](https://img.shields.io/badge/Linux-Foundation-blue)](https://linuxfoundation.org/) [![Source Code](https://img.shields.io/badge/GitHub-100000?logo=github&logoColor=white&color=blue)](https://github.com/lfreleng-actions/docker-release-detect-action) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![pre-commit.ci status badge]][pre-commit.ci results page] [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lfreleng-actions/docker-release-detect-action/badge)](https://scorecard.dev/viewer/?uri=github.com/lfreleng-actions/docker-release-detect-action)
+[![Linux Foundation](https://img.shields.io/badge/Linux-Foundation-blue)](https://linuxfoundation.org/) [![Source Code](https://img.shields.io/badge/GitHub-100000?logo=github&logoColor=white&color=blue)](https://github.com/lfreleng-actions/docker-release-detect-action) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lfreleng-actions/docker-release-detect-action/badge)](https://scorecard.dev/viewer/?uri=github.com/lfreleng-actions/docker-release-detect-action)
 <!-- prettier-ignore-end -->
 
 Decides whether a commit releases containers. It looks for the
@@ -493,5 +493,3 @@ verdict on every file in `tests/fixtures/releases/`.
 [docker-workflows]: https://github.com/lfreleng-actions/docker-workflows
 [docker-workflows#36]: https://github.com/lfreleng-actions/docker-workflows/issues/36
 [verify-release-schema-action]: https://github.com/lfreleng-actions/verify-release-schema-action
-[pre-commit.ci results page]: https://results.pre-commit.ci/latest/github/lfreleng-actions/docker-release-detect-action/main
-[pre-commit.ci status badge]: https://results.pre-commit.ci/badge/github/lfreleng-actions/docker-release-detect-action/main.svg
